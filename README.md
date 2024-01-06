@@ -1,0 +1,1 @@
+# turkcealtyazi-stremio-addon

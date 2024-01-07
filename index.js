@@ -85,6 +85,8 @@ app.get('/:userConf/manifest.json', function (req, res) {
     respond(res, newManifest);
   }
 });
+
+
 // Dosya adında özel karakterler düzeltildikten sonra kontrol yapılıyor
 async function WriteSubtitles(entry, subFilePath) {
 
@@ -98,6 +100,28 @@ async function WriteSubtitles(entry, subFilePath) {
   entry.pipe(fs.createWriteStream(sanitizedFilePath, { encoding: 'binary' }));
 }
 
+
+function getsub(subFilePath) {
+  const buffer = fs.readFileSync(subFilePath);
+  const decodedFileContent = iconv.decode(buffer, 'ISO-8859-9')
+  fs.writeFileSync(subFilePath, decodedFileContent, { encoding: 'utf8' });
+
+  var foundext = path.extname(subFilePath)
+  var readFile = fs.readFileSync(subFilePath, { encoding: "utf8" });
+  if (foundext != ".srt") {
+    
+
+
+    if (readFile != '') {
+      const decodedFileContent = iconv.decode(readFile, 'UTF8');
+      return { text: decodedFileContent, ext: foundext };
+    }
+
+  }else{
+   // const decodedFileContent = iconv.decode(readFile, 'UTF8');
+    return { text: readFile, ext: foundext };
+  }
+}
 app.get('/download/:idid\-:sidid\-:altid\-:episode', limiter, async function (req, res) {
   try {
     const folderPath = './subs/';
@@ -173,35 +197,25 @@ app.get('/download/:idid\-:sidid\-:altid\-:episode', limiter, async function (re
       console.log(error);
     }
 
-    //setTimeout(()=>console.log("1 seconds wait the write"),2000);
-
-    const buffer = fs.readFileSync(subFilePath);
-    const decodedFileContent = iconv.decode(buffer, 'ISO-8859-9')
-    fs.writeFileSync(subFilePath, decodedFileContent, { encoding: 'utf8' });
 
 
-
-
-
-    var foundext = path.extname(subFilePath)
-    if (foundext != ".srt") {
-      var readFile = fs.readFileSync(subFilePath, { encoding: "utf8" });
-      const outputExtension = '.srt'
-      const options = {
-        removeTextFormatting: true,
-      };
-      const { subtitle } = subsrt.convert(readFile, outputExtension, options)
-
-      if (subtitle != '') {
-        const decodedFileContent = iconv.decode(subtitle, 'UTF8')
-        return res.send(decodedFileContent)
+    var textt = getsub(subFilePath);
+    if (typeof textt !== 'undefined' && typeof textt.ext !== 'undefined') {
+      if (textt.ext !== ".srt") {
+        const outputExtension = '.srt'
+        const options = {
+          removeTextFormatting: true,
+        };
+        const { subtitle } = subsrt.convert(textt.text, outputExtension, options)
+        return res.send(subtitle);
       }
     }
+    
 
 
-    var readFile = fs.readFileSync(subFilePath, { encoding: "utf8" });
-    return res.send(readFile)
-    //return res.send(readFile)
+    //console.log(decodedFileContent);
+    return res.send(textt.text)
+
 
   } catch (err) {
     console.log(err)

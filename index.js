@@ -1,6 +1,7 @@
 require("dotenv").config({ path: "./dotenv.env" });
 const express = require("express");
 const landing = require('./landingTemplate');
+const { publishToCentral }  = require('stremio-addon-sdk')
 const app = express();
 const fs = require("fs");
 var subsrt = require("subtitle-converter");
@@ -291,3 +292,5 @@ if (module.parent) {
     console.log(config)
   });
 }
+//publish to stremio store
+publishToCentral(process.env.URL+"/manifest.json");

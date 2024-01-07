@@ -12,7 +12,7 @@ const subtitlePageFinder = require("./scraper");
 const config = require('./config');
 const MANIFEST = require('./manifest');
 //const { HttpProxyAgent, HttpsProxyAgent } = require("hpagent");
-//const NodeCache = require("node-cache");
+const NodeCache = require("node-cache");
 const isItDownForMe = require('./addonStatus');
 const rateLimit = require('express-rate-limit')
 const header = require("./header");
@@ -29,7 +29,7 @@ const limiter = rateLimit({
 
 //app.set('trust proxy', '127.0.0.1');
 
-//const myCache = new NodeCache({ stdTTL: 15 * 60, checkperiod: 120 });
+const myCache = new NodeCache({ stdTTL: 15 * 60, checkperiod: 120 });
 
 // const agentConfig = {
 //   keepAlive: false,
@@ -192,18 +192,18 @@ app.get('/:userConf?/subtitles/:type/:imdbId/:query?.json', limiter, async funct
     let season = Number(imdbId.split(":")[1])
     let episode = Number(imdbId.split(":")[2])
 
-    // if (myCache.has(req.params.imdbId)) {
-    //   respond(res, myCache.get(req.params.imdbId));
-    // } else {
+    if (myCache.has(req.params.imdbId)) {
+      respond(res, myCache.get(req.params.imdbId));
+    } else {
     const subtitles = await subtitlePageFinder(videoId, type, season, episode);
     if (subtitles.length > 0) {
-      // myCache.set(req.params.imdbId, { subtitles: subtitles, cacheMaxAge: CACHE_MAX_AGE, staleRevalidate: STALE_REVALIDATE_AGE, staleError: STALE_ERROR_AGE }, 15 * 60) // 15 mins
+      myCache.set(req.params.imdbId, { subtitles: subtitles, cacheMaxAge: CACHE_MAX_AGE, staleRevalidate: STALE_REVALIDATE_AGE, staleError: STALE_ERROR_AGE }, 15 * 60) // 15 mins
       respond(res, { subtitles: subtitles, cacheMaxAge: CACHE_MAX_AGE, staleRevalidate: STALE_REVALIDATE_AGE, staleError: STALE_ERROR_AGE });
     } else {
-      // myCache.set(req.params.imdbId, { subtitles: subtitles }, 2 * 60) // 2 mins
+      myCache.set(req.params.imdbId, { subtitles: subtitles }, 2 * 60) // 2 mins
       respond(res, { subtitles: subtitles });
     }
-    // }
+    }
 
   } catch (err) {
     console.log(err);

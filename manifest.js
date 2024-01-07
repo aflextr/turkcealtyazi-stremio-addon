@@ -1,5 +1,5 @@
 module.exports={
-    id: "org.turkcealtyaziorg",
+    id: "org.turkcealtyaziorg-stremio",
     version: "1.1.2",
     name: "TurkceAltyazi.Org",
     logo: "https://raw.githubusercontent.com/gorlev/turkcealtyaziorg-stremio-addon/master/images/logo.png",

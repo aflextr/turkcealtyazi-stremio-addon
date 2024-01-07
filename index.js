@@ -1,7 +1,7 @@
 require("dotenv").config({ path: "./dotenv.env" });
 const express = require("express");
 const landing = require('./landingTemplate');
-const { publishToCentral }  = require('stremio-addon-sdk')
+const { publishToCentral } = require('stremio-addon-sdk')
 const app = express();
 const fs = require("fs");
 var subsrt = require("subtitle-converter");
@@ -85,7 +85,18 @@ app.get('/:userConf/manifest.json', function (req, res) {
     respond(res, newManifest);
   }
 });
+// Dosya adında özel karakterler düzeltildikten sonra kontrol yapılıyor
+async function WriteSubtitles(entry, subFilePath) {
 
+  const sanitizedFilePath = path.normalize(subFilePath);
+
+  // Dosya adıyla oluşturulan yolun uygunluğunu kontrol etmek
+  if (!fs.existsSync(path.dirname(sanitizedFilePath))) {
+    fs.mkdirSync(path.dirname(sanitizedFilePath), { recursive: true });
+  }
+
+  entry.pipe(fs.createWriteStream(sanitizedFilePath, { encoding: 'binary' }));
+}
 
 app.get('/download/:idid\-:sidid\-:altid\-:episode', limiter, async function (req, res) {
   try {
@@ -132,30 +143,45 @@ app.get('/download/:idid\-:sidid\-:altid\-:episode', limiter, async function (re
 
         const decodedFileName = decodeURIComponent(fileName);
 
-        // Dosya adında özel karakterler düzeltildikten sonra kontrol yapılıyor
-        if (decodedFileName.includes(episode)) {
+
+        if (decodedFileName.includes("E" + episode || "e" + episode)) {
           subFilePath = `./subs/${req.params.altid}/${decodedFileName}`;
-          const sanitizedFilePath = path.normalize(subFilePath);
+          await WriteSubtitles(entry, subFilePath);
+          break;
 
-          // Dosya adıyla oluşturulan yolun uygunluğunu kontrol etmek
-          if (!fs.existsSync(path.dirname(sanitizedFilePath))) {
-            fs.mkdirSync(path.dirname(sanitizedFilePath), { recursive: true });
-          }
-
-          entry.pipe(fs.createWriteStream(sanitizedFilePath, { encoding: 'binary' }));
-
-        } else {
-          entry.autodrain();
+        } else if (decodedFileName.includes("B" + episode || "b" + episode)) {
+          subFilePath = `./subs/${req.params.altid}/${decodedFileName}`;
+          await WriteSubtitles(entry, subFilePath);
+          break;
         }
+        else if (decodedFileName.includes("_" + episode + "_")) {
+          subFilePath = `./subs/${req.params.altid}/${decodedFileName}`;
+          await WriteSubtitles(entry, subFilePath);
+          break;
+        }
+        else if (decodedFileName.includes(episode)) {
+          subFilePath = `./subs/${req.params.altid}/${decodedFileName}`;
+          await WriteSubtitles(entry, subFilePath);
+        }
+        else {
+          await entry.autodrain();
+        }
+
       }
+
     } catch (error) {
       console.log(error);
     }
 
+    //setTimeout(()=>console.log("1 seconds wait the write"),2000);
 
     const buffer = fs.readFileSync(subFilePath);
     const decodedFileContent = iconv.decode(buffer, 'ISO-8859-9')
     fs.writeFileSync(subFilePath, decodedFileContent, { encoding: 'utf8' });
+
+
+
+
 
     var foundext = path.extname(subFilePath)
     if (foundext != ".srt") {
@@ -170,14 +196,12 @@ app.get('/download/:idid\-:sidid\-:altid\-:episode', limiter, async function (re
         const decodedFileContent = iconv.decode(subtitle, 'UTF8')
         return res.send(decodedFileContent)
       }
-
-
     }
 
+
     var readFile = fs.readFileSync(subFilePath, { encoding: "utf8" });
-
-
     return res.send(readFile)
+    //return res.send(readFile)
 
   } catch (err) {
     console.log(err)
@@ -196,14 +220,14 @@ app.get('/:userConf?/subtitles/:type/:imdbId/:query?.json', limiter, async funct
     if (myCache.has(req.params.imdbId)) {
       respond(res, myCache.get(req.params.imdbId));
     } else {
-    const subtitles = await subtitlePageFinder(videoId, type, season, episode);
-    if (subtitles.length > 0) {
-      myCache.set(req.params.imdbId, { subtitles: subtitles, cacheMaxAge: CACHE_MAX_AGE, staleRevalidate: STALE_REVALIDATE_AGE, staleError: STALE_ERROR_AGE }, 15 * 60) // 15 mins
-      respond(res, { subtitles: subtitles, cacheMaxAge: CACHE_MAX_AGE, staleRevalidate: STALE_REVALIDATE_AGE, staleError: STALE_ERROR_AGE });
-    } else {
-      myCache.set(req.params.imdbId, { subtitles: subtitles }, 2 * 60) // 2 mins
-      respond(res, { subtitles: subtitles });
-    }
+      const subtitles = await subtitlePageFinder(videoId, type, season, episode);
+      if (subtitles.length > 0) {
+        myCache.set(req.params.imdbId, { subtitles: subtitles, cacheMaxAge: CACHE_MAX_AGE, staleRevalidate: STALE_REVALIDATE_AGE, staleError: STALE_ERROR_AGE }, 15 * 60) // 15 mins
+        respond(res, { subtitles: subtitles, cacheMaxAge: CACHE_MAX_AGE, staleRevalidate: STALE_REVALIDATE_AGE, staleError: STALE_ERROR_AGE });
+      } else {
+        myCache.set(req.params.imdbId, { subtitles: subtitles }, 2 * 60) // 2 mins
+        respond(res, { subtitles: subtitles });
+      }
     }
 
   } catch (err) {
@@ -293,4 +317,4 @@ if (module.parent) {
   });
 }
 //publish to stremio store
-publishToCentral(process.env.URL+"/manifest.json");
+publishToCentral(process.env.URL + "/manifest.json");

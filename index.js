@@ -18,7 +18,17 @@ const isItDownForMe = require('./addonStatus');
 const rateLimit = require('express-rate-limit')
 const header = require("./header");
 const path = require("path");
+const crypto = require("crypto");
+const https = require("https");
 
+const allowLegacyRenegotiationforNodeJsOptions = {
+  httpsAgent: new https.Agent({
+    // for self signed you could also add
+    // rejectUnauthorized: false,
+    // allow legacy server
+    secureOptions: crypto.constants.SSL_OP_LEGACY_SERVER_CONNECT,
+  }),
+};
 
 
 const limiter = rateLimit({
@@ -153,7 +163,7 @@ app.get('/download/:idid\-:sidid\-:altid\-:episode', limiter, async function (re
     res.set('Cache-Control', `public, max-age=${CACHE_MAX_AGE}, stale-while-revalidate:${STALE_REVALIDATE_AGE}, stale-if-error:${STALE_ERROR_AGE}`);
 
 
-    const response = await axios({ url: process.env.PROXY_URL + '/ind', method: "POST", headers: header, data: `idid=${req.params.idid}&altid=${req.params.altid}&sidid=${req.params.sidid}`, responseType: 'arraybuffer', responseEncoding: 'binary' })
+    const response = await axios({...allowLegacyRenegotiationforNodeJsOptions, url: process.env.PROXY_URL + '/ind', method: "POST", headers: header, data: `idid=${req.params.idid}&altid=${req.params.altid}&sidid=${req.params.sidid}`, responseType: 'arraybuffer', responseEncoding: 'binary' })
     var episode = req.params.episode;
     if (req.params.episode < 10) episode = "0" + req.params.episode;
 
@@ -179,6 +189,11 @@ app.get('/download/:idid\-:sidid\-:altid\-:episode', limiter, async function (re
           break;
         }
         else if (decodedFileName.includes("_" + episode + "_")) {
+          subFilePath = `./subs/${req.params.altid}/${decodedFileName}`;
+          await WriteSubtitles(entry, subFilePath);
+          break;
+        }
+        else if (decodedFileName.includes("x"+episode || "X"+episode)) {
           subFilePath = `./subs/${req.params.altid}/${decodedFileName}`;
           await WriteSubtitles(entry, subFilePath);
           break;

@@ -2,7 +2,7 @@ var env = "local";
 const getProxy = require('./getProxy')
 require("dotenv").config({path:"./dotenv.env"});
 var config = {
-    turkceAltyaziURL: 'i7475726b6365616c7479617a69o6f7267z.oszar.com',
+    turkceAltyaziURL: 'turkcealtyazi-dotorg.gateway.web.tr',
   
 }
 

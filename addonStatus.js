@@ -4,7 +4,7 @@ const cheerio = require('cheerio');
 async function isItDownForMe() {
 
     try {
-        const data = `wp-isitdownorjustme-form-url=i7475726b6365616c7479617a69o6f7267z.oszar.com&wp-isitdownorjustme-form-submit=`
+        const data = `wp-isitdownorjustme-form-url=turkcealtyazi-dotorg.gateway.web.tr&wp-isitdownorjustme-form-submit=`
         const responseDown = await axios({url:"https://isitdownorjustme.net/",method:"POST", data, headers:{"user-agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36"}});
         $ = cheerio.load(responseDown.data)
 

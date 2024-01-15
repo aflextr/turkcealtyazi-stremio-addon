@@ -4,6 +4,8 @@ const header = require("./header")
 const cheerio = require('cheerio');
 const config = require('./config');
 require("dotenv").config({path:"./dotenv.env"});
+const crypto = require("crypto");
+const https = require("https");
 
 // const agentConfig = {
 //     keepAlive: true,
@@ -15,12 +17,23 @@ require("dotenv").config({path:"./dotenv.env"});
 // axios.defaults.httpAgent = new HttpProxyAgent(agentConfig);
 // axios.defaults.httpsAgent = new HttpsProxyAgent(agentConfig);
 
+
+const allowLegacyRenegotiationforNodeJsOptions = {
+    httpsAgent: new https.Agent({
+      // for self signed you could also add
+      // rejectUnauthorized: false,
+      // allow legacy server
+      secureOptions: crypto.constants.SSL_OP_LEGACY_SERVER_CONNECT,
+    }),
+  };
+
+
 async function mainPageFinder(imdbId) {
     
         
         var editedId = imdbId.substring(2);
         
-        const response = await axios({url:process.env.PROXY_URL+`/things_.php?t=99&term=${editedId}`, method:"GET", headers:header})
+        const response = await axios({...allowLegacyRenegotiationforNodeJsOptions, url:process.env.PROXY_URL+`/things_.php?t=99&term=${editedId}`, method:"GET", headers:header})
 
 
         if (response.status === 200){
@@ -35,7 +48,7 @@ async function mainPageFinder(imdbId) {
 async function subIDfinder(subLink) {
     try {
 
-        const response = await axios({url:subLink, method:"GET", headers:header});
+        const response = await axios({...allowLegacyRenegotiationforNodeJsOptions, url:subLink, method:"GET", headers:header});
 
         
         $ = cheerio.load(response.data)
@@ -65,7 +78,7 @@ async function subtitlePageFinder(imdbId,type, season, episode) {
         const mainPageURL  = await mainPageFinder(imdbId)
         if(mainPageURL.length > 0){
 
-            const mainPageHTML = await axios({url:mainPageURL,method:"GET", headers:header})
+            const mainPageHTML = await axios({...allowLegacyRenegotiationforNodeJsOptions, url:mainPageURL,method:"GET", headers:header})
 
             
             $ = cheerio.load(mainPageHTML.data)

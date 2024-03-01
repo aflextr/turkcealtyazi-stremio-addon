@@ -346,4 +346,4 @@ if (module.parent) {
   });
 }
 //publish to stremio store
-publishToCentral(process.env.URL + "/manifest.json");
+//publishToCentral(process.env.URL + "/manifest.json");

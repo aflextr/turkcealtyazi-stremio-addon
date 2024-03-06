@@ -167,7 +167,10 @@ async function subtitlePageFinder(imdbId,type, season, episode) {
         }
     } catch (e) {
         errorCount++;
-        if (errorCount>5) return stremioElements = [];
+        if (errorCount>5){
+            errorCount = 0;
+            return stremioElements = []
+        };
         console.error("Error happened on subtitlePageFinder",e);
         await subtitlePageFinder(imdbId,type,season,episode);
         

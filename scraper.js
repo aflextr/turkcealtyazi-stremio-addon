@@ -68,6 +68,7 @@ async function subIDfinder(subLink) {
     }
 }
 
+var errorCount =0;
 async function subtitlePageFinder(imdbId,type, season, episode) {
     
     try {
@@ -141,13 +142,22 @@ async function subtitlePageFinder(imdbId,type, season, episode) {
             
             for (let i= 0; i <subtitlesData.length; i++) {
                 let subIDs = await subIDfinder(subtitlesData[i].pageUrl)
-                
+                var url= "";
                 let idid = subIDs[0].idid
                 let altid = subIDs[0].altid
                 let sidid = subIDs[0].sidid
                 
                 let lang = "tur"
-                let url = `${process.env.URL}/download/${idid}-${sidid}-${altid}-${episode}`
+                //CHECK MOVİE OR SERİES 
+                if (isNaN(episode)) {
+                    episode = 0;
+                    url = `${process.env.URL}/download/${idid}-${sidid}-${altid}-${episode}`
+                    
+                }else{
+                    url = `${process.env.URL}/download/${idid}-${sidid}-${altid}-${episode}`
+                    
+                }
+                
                 
                 stremioElements.push({url,lang,id:altid,episode})
             }
@@ -156,8 +166,11 @@ async function subtitlePageFinder(imdbId,type, season, episode) {
             
         }
     } catch (e) {
+        errorCount++;
+        if (errorCount>5) return stremioElements = [];
         console.error("Error happened on subtitlePageFinder",e);
-        return stremioElements = []
+        await subtitlePageFinder(imdbId,type,season,episode);
+        
     }
     
 }

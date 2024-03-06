@@ -119,7 +119,7 @@ function getsub(subFilePath) {
   var foundext = path.extname(subFilePath)
   var readFile = fs.readFileSync(subFilePath, { encoding: "utf8" });
   if (foundext != ".srt") {
-    
+
 
 
     if (readFile != '') {
@@ -127,12 +127,12 @@ function getsub(subFilePath) {
       return { text: decodedFileContent, ext: foundext };
     }
 
-  }else{
-   // const decodedFileContent = iconv.decode(readFile, 'UTF8');
+  } else {
+    // const decodedFileContent = iconv.decode(readFile, 'UTF8');
     return { text: readFile, ext: foundext };
   }
 }
-app.get('/download/:idid\-:sidid\-:altid\-:episode', limiter, async function (req, res) {
+app.get('/download/:idid\-:sidid\-:altid\-:episode', async function (req, res) {
   try {
     const folderPath = './subs/';
 
@@ -163,9 +163,13 @@ app.get('/download/:idid\-:sidid\-:altid\-:episode', limiter, async function (re
     res.set('Cache-Control', `public, max-age=${CACHE_MAX_AGE}, stale-while-revalidate:${STALE_REVALIDATE_AGE}, stale-if-error:${STALE_ERROR_AGE}`);
 
 
-    const response = await axios({...allowLegacyRenegotiationforNodeJsOptions, url: process.env.PROXY_URL + '/ind', method: "POST", headers: header, data: `idid=${req.params.idid}&altid=${req.params.altid}&sidid=${req.params.sidid}`, responseType: 'arraybuffer', responseEncoding: 'binary' })
+    const response = await axios({ ...allowLegacyRenegotiationforNodeJsOptions, url: process.env.PROXY_URL + '/ind', method: "POST", headers: header, data: `idid=${req.params.idid}&altid=${req.params.altid}&sidid=${req.params.sidid}`, responseType: 'arraybuffer', responseEncoding: 'binary' })
     var episode = req.params.episode;
-    if (req.params.episode < 10) episode = "0" + req.params.episode;
+    if (req.params.episode == 0) {
+      episode = 0;
+    } else if (req.params.episode < 10) {
+      episode = "0" + req.params.episode;
+    }
 
     try {
       fs.writeFileSync(`./subs/${req.params.altid}.zip`, response.data, { encoding: 'binary' });
@@ -177,8 +181,15 @@ app.get('/download/:idid\-:sidid\-:altid\-:episode', limiter, async function (re
 
         const decodedFileName = decodeURIComponent(fileName);
 
-
-        if (decodedFileName.includes("E" + episode || "e" + episode)) {
+        //MOVİE 
+        
+        if (episode == 0) {
+          subFilePath = `./subs/${req.params.altid}/${decodedFileName}`;
+          await WriteSubtitles(entry, subFilePath);
+          break;
+        }
+        //SERİES
+        else if (decodedFileName.includes("E" + episode || "e" + episode)) {
           subFilePath = `./subs/${req.params.altid}/${decodedFileName}`;
           await WriteSubtitles(entry, subFilePath);
           break;
@@ -193,7 +204,7 @@ app.get('/download/:idid\-:sidid\-:altid\-:episode', limiter, async function (re
           await WriteSubtitles(entry, subFilePath);
           break;
         }
-        else if (decodedFileName.includes("x"+episode || "X"+episode)) {
+        else if (decodedFileName.includes("x" + episode || "X" + episode)) {
           subFilePath = `./subs/${req.params.altid}/${decodedFileName}`;
           await WriteSubtitles(entry, subFilePath);
           break;
@@ -225,7 +236,7 @@ app.get('/download/:idid\-:sidid\-:altid\-:episode', limiter, async function (re
         return res.send(subtitle);
       }
     }
-    
+
 
 
     //console.log(decodedFileContent);
@@ -239,7 +250,7 @@ app.get('/download/:idid\-:sidid\-:altid\-:episode', limiter, async function (re
 
 });
 
-app.get('/:userConf?/subtitles/:type/:imdbId/:query?.json', limiter, async function (req, res) {
+app.get('/:userConf?/subtitles/:type/:imdbId/:query?.json', async function (req, res) {
   try {
     let { type, imdbId, query } = req.params
     let videoId = imdbId.split(":")[0]

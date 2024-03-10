@@ -229,8 +229,11 @@ app.get('/download/:idid\-:sidid\-:altid\-:episode', function (req, res) {
         if (fs.existsSync(`./subs/${req.params.altid}.zip`)) {
           fs.rmSync(`./subs/${req.params.altid}.zip`);
         }
-
-        return res.send(textt.text)
+        
+        if (typeof(textt.text) !== "undefined") {
+          return res.send(textt.text)
+        }
+        
       });
 
     })

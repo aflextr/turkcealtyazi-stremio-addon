@@ -102,30 +102,35 @@ app.get('/:userConf/manifest.json', function (req, res) {
 
 
 function getsub(subFilePath) {
-  const buffer = fs.readFileSync(subFilePath);
-  const decodedFileContent = iconv.decode(buffer, 'ISO-8859-9')
-  fs.writeFileSync(subFilePath, decodedFileContent, { encoding: 'utf8' });
+  try {
+    const buffer = fs.readFileSync(subFilePath);
+    const decodedFileContent = iconv.decode(buffer, 'ISO-8859-9')
+    fs.writeFileSync(subFilePath, decodedFileContent, { encoding: 'utf8' });
 
 
-  var foundext = path.extname(subFilePath)
-  var readFile = fs.readFileSync(subFilePath, { encoding: "utf8" });
-  if (foundext != ".srt") {
-    if (readFile != '') {
-      const decodedFileContent = iconv.decode(readFile, 'UTF8');
+    var foundext = path.extname(subFilePath)
+    var readFile = fs.readFileSync(subFilePath, { encoding: "utf8" });
+    if (foundext != ".srt") {
+      if (readFile != '') {
+        const decodedFileContent = iconv.decode(readFile, 'UTF8');
 
 
-      const outputExtension = '.srt'
-      const options = {
-        removeTextFormatting: true,
-      };
-      const { subtitle } = subsrt.convert(readFile, outputExtension, options)
-      return { text: subtitle, ext: foundext };
+        const outputExtension = '.srt'
+        const options = {
+          removeTextFormatting: true,
+        };
+        const { subtitle } = subsrt.convert(readFile, outputExtension, options)
+        return { text: subtitle, ext: foundext };
 
+      }
+    } else {
+      // const decodedFileContent = iconv.decode(readFile, 'UTF8');
+      return { text: readFile, ext: foundext };
     }
-  } else {
-    // const decodedFileContent = iconv.decode(readFile, 'UTF8');
-    return { text: readFile, ext: foundext };
+  } catch (error) {
+    if (error) return console.log(error);
   }
+
 }
 
 
@@ -157,7 +162,7 @@ app.get('/download/:idid\-:sidid\-:altid\-:episode', function (req, res) {
   try {
     var subFilePath = "";
     var episode = req.params.episode;
-   
+
 
     if (req.params.episode == 0) {
       episode = 0;
@@ -165,7 +170,7 @@ app.get('/download/:idid\-:sidid\-:altid\-:episode', function (req, res) {
       episode = "0" + req.params.episode;
     }
 
-   
+
     CheckFolderAndFiles();
 
 
@@ -264,68 +269,68 @@ app.get('/:userConf?/subtitles/:type/:imdbId/:query?.json', async function (req,
 })
 
 app.get('/cache-status/:devpass?/:query?/:key?', function (req, res) {
-  let { devpass, query, key } = req.params
-  const devKey = process.env.DEV_KEY;
-  try {
-    if (devKey == devpass) {
-      if (query == "keys") {
-        res.send(myCache.keys())
-      } else if (query == "flushAll") {
-        res.send(myCache.flushAll())
-      } else if (query == "flushStats") {
-        res.send(myCache.flushStats())
-      } else if (query == "get") {
-        if (key) {
-          res.send(myCache.get(key))
-        } else {
-          res.send("You forgot to send the key!")
-        }
-      } else if (query == "getStats") {
-        res.send(myCache.getStats())
-      } else {
-        res.send("Missing or wrong parameter.")
-      }
-    } else {
-      return res.send("You shouldn't be here.")
-    }
-  } catch (err) {
-    console.log(err)
-    return res.send("Error ocurred.")
-  }
+  // let { devpass, query, key } = req.params
+  // const devKey = process.env.DEV_KEY;
+  // try {
+  //   if (devKey == devpass) {
+  //     if (query == "keys") {
+  //       res.send(myCache.keys())
+  //     } else if (query == "flushAll") {
+  //       res.send(myCache.flushAll())
+  //     } else if (query == "flushStats") {
+  //       res.send(myCache.flushStats())
+  //     } else if (query == "get") {
+  //       if (key) {
+  //         res.send(myCache.get(key))
+  //       } else {
+  //         res.send("You forgot to send the key!")
+  //       }
+  //     } else if (query == "getStats") {
+  //       res.send(myCache.getStats())
+  //     } else {
+  //       res.send("Missing or wrong parameter.")
+  //     }
+  //   } else {
+  //     return res.send("You shouldn't be here.")
+  //   }
+  // } catch (err) {
+  //   console.log(err)
+  //   return res.send("Error ocurred.")
+  // }
 
-  return res.send("You shouldn't be here.")
+   return res.send("You shouldn't be here.")
 });
 
 app.get('/app-status/:devpass?', async function (req, res) {
-  let { devpass } = req.params
-  const devKey = process.env.DEV_KEY;
-  if (devpass == devKey) {
-    let proxyStatus, websiteStatus
-    try {
-      const responseProxy = await axios.get("https://api.myip.com/");
-      if (responseProxy.data.cc.trim() === "TR") {
-        proxyStatus = "OK!"
-      } else {
-        proxyStatus = "FAIL!"
-      }
-    } catch (error) {
-      proxyStatus = "SERVER DOWN!"
-    }
+  // let { devpass } = req.params
+  // const devKey = process.env.DEV_KEY;
+  // if (devpass == devKey) {
+  //   let proxyStatus, websiteStatus
+  //   try {
+  //     const responseProxy = await axios.get("https://api.myip.com/");
+  //     if (responseProxy.data.cc.trim() === "TR") {
+  //       proxyStatus = "OK!"
+  //     } else {
+  //       proxyStatus = "FAIL!"
+  //     }
+  //   } catch (error) {
+  //     proxyStatus = "SERVER DOWN!"
+  //   }
 
-    try {
-      websiteStatus = await isItDownForMe()
-      if (websiteStatus.status == 1 && websiteStatus.result.status == "Site Online") {
-        websiteStatus = "OK!"
-      } else {
-        websiteStatus = "FAIL!"
-      }
-    } catch (error) {
-      websiteStatus = "WEBSITE DOWN!"
-    }
-    return res.send(`Proxy Status: ${proxyStatus}\nWebsite Status: ${websiteStatus} `)
-  } else {
-  return res.send("You shouldn't be here.")
-  }
+  //   try {
+  //     websiteStatus = await isItDownForMe()
+  //     if (websiteStatus.status == 1 && websiteStatus.result.status == "Site Online") {
+  //       websiteStatus = "OK!"
+  //     } else {
+  //       websiteStatus = "FAIL!"
+  //     }
+  //   } catch (error) {
+  //     websiteStatus = "WEBSITE DOWN!"
+  //   }
+  //   return res.send(`Proxy Status: ${proxyStatus}\nWebsite Status: ${websiteStatus} `)
+  // } else {
+     return res.send("You shouldn't be here.")
+  // }
 });
 
 app.get('/ip', function (req, res) {

@@ -21,6 +21,8 @@ const path = require("path");
 const crypto = require("crypto");
 const https = require("https");
 
+
+
 const allowLegacyRenegotiationforNodeJsOptions = {
   httpsAgent: new https.Agent({
     // for self signed you could also add
@@ -97,18 +99,6 @@ app.get('/:userConf/manifest.json', function (req, res) {
 });
 
 
-// Dosya adında özel karakterler düzeltildikten sonra kontrol yapılıyor
-async function WriteSubtitles(entry, subFilePath) {
-
-  const sanitizedFilePath = path.normalize(subFilePath);
-
-  // Dosya adıyla oluşturulan yolun uygunluğunu kontrol etmek
-  if (!fs.existsSync(path.dirname(sanitizedFilePath))) {
-    fs.mkdirSync(path.dirname(sanitizedFilePath), { recursive: true });
-  }
-
-  entry.pipe(fs.createWriteStream(sanitizedFilePath, { encoding: 'binary' }));
-}
 
 
 function getsub(subFilePath) {
@@ -116,132 +106,129 @@ function getsub(subFilePath) {
   const decodedFileContent = iconv.decode(buffer, 'ISO-8859-9')
   fs.writeFileSync(subFilePath, decodedFileContent, { encoding: 'utf8' });
 
+
   var foundext = path.extname(subFilePath)
   var readFile = fs.readFileSync(subFilePath, { encoding: "utf8" });
   if (foundext != ".srt") {
-
-
-
     if (readFile != '') {
       const decodedFileContent = iconv.decode(readFile, 'UTF8');
-      return { text: decodedFileContent, ext: foundext };
-    }
 
+
+      const outputExtension = '.srt'
+      const options = {
+        removeTextFormatting: true,
+      };
+      const { subtitle } = subsrt.convert(readFile, outputExtension, options)
+      return { text: subtitle, ext: foundext };
+
+    }
   } else {
     // const decodedFileContent = iconv.decode(readFile, 'UTF8');
     return { text: readFile, ext: foundext };
   }
 }
-app.get('/download/:idid\-:sidid\-:altid\-:episode', async function (req, res) {
+
+
+function CheckFolderAndFiles() {
+  const folderPath = './subs/';
+  if (!fs.existsSync(folderPath)) {
+    fs.mkdirSync(folderPath);
+  }
+
+  const files = fs.readdirSync(folderPath);
+
+  if (files.length > 100) {
+    files.forEach((file) => {
+      const filePath = path.join(folderPath, file);
+      const fileStats = fs.statSync(filePath);
+
+      if (fileStats.isFile()) {
+        fs.unlinkSync(filePath);
+      } else if (fileStats.isDirectory()) {
+        // Dizin içinde dosya varsa onları da silmek için
+        fs.rmdirSync(filePath, { recursive: true });
+      }
+    });
+  }
+}
+
+
+app.get('/download/:idid\-:sidid\-:altid\-:episode', function (req, res) {
   try {
-    const folderPath = './subs/';
-
-    if (!fs.existsSync(folderPath)) {
-      fs.mkdirSync(folderPath);
-    }
-
-    const files = fs.readdirSync(folderPath);
-
-    if (files.length > 15) {
-      files.forEach((file) => {
-        const filePath = path.join(folderPath, file);
-        const fileStats = fs.statSync(filePath);
-
-        if (fileStats.isFile()) {
-          fs.unlinkSync(filePath);
-        } else if (fileStats.isDirectory()) {
-          // Dizin içinde dosya varsa onları da silmek için
-          fs.rmdirSync(filePath, { recursive: true });
-        }
-      });
-    }
-
-
-
-
     var subFilePath = "";
-    res.set('Cache-Control', `public, max-age=${CACHE_MAX_AGE}, stale-while-revalidate:${STALE_REVALIDATE_AGE}, stale-if-error:${STALE_ERROR_AGE}`);
-
-
-    const response = await axios({ ...allowLegacyRenegotiationforNodeJsOptions, url: process.env.PROXY_URL + '/ind', method: "POST", headers: header, data: `idid=${req.params.idid}&altid=${req.params.altid}&sidid=${req.params.sidid}`, responseType: 'arraybuffer', responseEncoding: 'binary' })
     var episode = req.params.episode;
+   
+
     if (req.params.episode == 0) {
       episode = 0;
     } else if (req.params.episode < 10) {
       episode = "0" + req.params.episode;
     }
 
-    try {
+   
+    CheckFolderAndFiles();
+
+
+    res.set('Cache-Control', `public, max-age=${CACHE_MAX_AGE}, stale-while-revalidate:${STALE_REVALIDATE_AGE}, stale-if-error:${STALE_ERROR_AGE}`);
+
+
+    axios({ ...allowLegacyRenegotiationforNodeJsOptions, url: process.env.PROXY_URL + '/ind', method: "POST", headers: header, data: `idid=${req.params.idid}&altid=${req.params.altid}&sidid=${req.params.sidid}`, responseType: 'arraybuffer', responseEncoding: 'binary' }).then((response) => {
+
       fs.writeFileSync(`./subs/${req.params.altid}.zip`, response.data, { encoding: 'binary' });
 
-      const zip = fs.createReadStream(`./subs/${req.params.altid}.zip`).pipe(unzipper.Parse({ forceStream: true }));
+      //extract zip
+      fs.createReadStream(`./subs/${req.params.altid}.zip`).pipe(unzipper.Extract({ path: `./subs/${req.params.altid}` })).on('error', (err) => console.error('Hata:', err)).on("finish", () => {
+        var files = fs.readdirSync(`./subs/${req.params.altid}`);
 
-      for await (const entry of zip) {
-        const fileName = entry.path;
-
-        const decodedFileName = decodeURIComponent(fileName);
-
-        //MOVİE 
-        
-        if (episode == 0) {
-          subFilePath = `./subs/${req.params.altid}/${decodedFileName}`;
-          await WriteSubtitles(entry, subFilePath);
-          break;
+        if (!String(files[0]).includes(".")) {
+          files = fs.readdirSync(`./subs/${req.params.altid}/${files[0]}`);
         }
-        //SERİES
-        else if (decodedFileName.includes("E" + episode || "e" + episode)) {
-          subFilePath = `./subs/${req.params.altid}/${decodedFileName}`;
-          await WriteSubtitles(entry, subFilePath);
-          break;
+        for (const value of files) {
 
-        } else if (decodedFileName.includes("B" + episode || "b" + episode)) {
-          subFilePath = `./subs/${req.params.altid}/${decodedFileName}`;
-          await WriteSubtitles(entry, subFilePath);
-          break;
+          const decodedFileName = value;
+
+          //MOVİE 
+          if (episode == 0) {
+            subFilePath = `./subs/${req.params.altid}/${decodedFileName}`;
+            break;
+          }
+          //SERİES
+          else if (decodedFileName.includes("E" + episode || "e" + episode)) {
+            subFilePath = `./subs/${req.params.altid}/${decodedFileName}`;
+            break;
+          } else if (decodedFileName.includes("B" + episode || "b" + episode)) {
+            subFilePath = `./subs/${req.params.altid}/${decodedFileName}`;
+            break;
+          }
+          else if (decodedFileName.includes("_" + episode + "_")) {
+            subFilePath = `./subs/${req.params.altid}/${decodedFileName}`;
+            break;
+          }
+          else if (decodedFileName.includes("x" + episode || "X" + episode)) {
+            subFilePath = `./subs/${req.params.altid}/${decodedFileName}`;
+            break;
+          }
+          else if (decodedFileName.includes(episode)) {
+            subFilePath = `./subs/${req.params.altid}/${decodedFileName}`;
+            break;
+          }
+          else if (files.length == 1) {
+            subFilePath = `./subs/${req.params.altid}/${decodedFileName}`;
+            break;
+          }
         }
-        else if (decodedFileName.includes("_" + episode + "_")) {
-          subFilePath = `./subs/${req.params.altid}/${decodedFileName}`;
-          await WriteSubtitles(entry, subFilePath);
-          break;
-        }
-        else if (decodedFileName.includes("x" + episode || "X" + episode)) {
-          subFilePath = `./subs/${req.params.altid}/${decodedFileName}`;
-          await WriteSubtitles(entry, subFilePath);
-          break;
-        }
-        else if (decodedFileName.includes(episode)) {
-          subFilePath = `./subs/${req.params.altid}/${decodedFileName}`;
-          await WriteSubtitles(entry, subFilePath);
-        }
-        else {
-          await entry.autodrain();
+
+        var textt = getsub(subFilePath);
+
+        //delete zip file
+        if (fs.existsSync(`./subs/${req.params.altid}.zip`)) {
+          fs.rmSync(`./subs/${req.params.altid}.zip`);
         }
 
-      }
+        return res.send(textt.text)
+      });
 
-    } catch (error) {
-      console.log(error);
-    }
-
-
-
-    var textt = getsub(subFilePath);
-    if (typeof textt !== 'undefined' && typeof textt.ext !== 'undefined') {
-      if (textt.ext !== ".srt") {
-        const outputExtension = '.srt'
-        const options = {
-          removeTextFormatting: true,
-        };
-        const { subtitle } = subsrt.convert(textt.text, outputExtension, options)
-        return res.send(subtitle);
-      }
-    }
-
-
-
-    //console.log(decodedFileContent);
-    return res.send(textt.text)
-
+    })
 
   } catch (err) {
     console.log(err)
@@ -277,68 +264,68 @@ app.get('/:userConf?/subtitles/:type/:imdbId/:query?.json', async function (req,
 })
 
 app.get('/cache-status/:devpass?/:query?/:key?', function (req, res) {
-  // let { devpass, query, key } = req.params
-  // const devKey = process.env.DEV_KEY;
-  // try {
-  //   if (devKey == devpass) {
-  //     if (query == "keys") {
-  //       res.send(myCache.keys())
-  //     } else if (query == "flushAll") {
-  //       res.send(myCache.flushAll())
-  //     } else if (query == "flushStats") {
-  //       res.send(myCache.flushStats())
-  //     } else if (query == "get") {
-  //       if (key) {
-  //         res.send(myCache.get(key))
-  //       } else {
-  //         res.send("You forgot to send the key!")
-  //       }
-  //     } else if (query == "getStats") {
-  //       res.send(myCache.getStats())
-  //     } else {
-  //       res.send("Missing or wrong parameter.")
-  //     }
-  //   } else {
-  //     return res.send("You shouldn't be here.")
-  //   }
-  // } catch (err) {
-  //   console.log(err)
-  //   return res.send("Error ocurred.")
-  // }
+  let { devpass, query, key } = req.params
+  const devKey = process.env.DEV_KEY;
+  try {
+    if (devKey == devpass) {
+      if (query == "keys") {
+        res.send(myCache.keys())
+      } else if (query == "flushAll") {
+        res.send(myCache.flushAll())
+      } else if (query == "flushStats") {
+        res.send(myCache.flushStats())
+      } else if (query == "get") {
+        if (key) {
+          res.send(myCache.get(key))
+        } else {
+          res.send("You forgot to send the key!")
+        }
+      } else if (query == "getStats") {
+        res.send(myCache.getStats())
+      } else {
+        res.send("Missing or wrong parameter.")
+      }
+    } else {
+      return res.send("You shouldn't be here.")
+    }
+  } catch (err) {
+    console.log(err)
+    return res.send("Error ocurred.")
+  }
 
   return res.send("You shouldn't be here.")
 });
 
 app.get('/app-status/:devpass?', async function (req, res) {
-  // let { devpass } = req.params
-  // const devKey = process.env.DEV_KEY;
-  // if (devpass == devKey) {
-  //   let proxyStatus, websiteStatus
-  //   try {
-  //     const responseProxy = await axios.get("https://api.myip.com/");
-  //     if (responseProxy.data.cc.trim() === "TR") {
-  //       proxyStatus = "OK!"
-  //     } else {
-  //       proxyStatus = "FAIL!"
-  //     }
-  //   } catch (error) {
-  //     proxyStatus = "SERVER DOWN!"
-  //   }
+  let { devpass } = req.params
+  const devKey = process.env.DEV_KEY;
+  if (devpass == devKey) {
+    let proxyStatus, websiteStatus
+    try {
+      const responseProxy = await axios.get("https://api.myip.com/");
+      if (responseProxy.data.cc.trim() === "TR") {
+        proxyStatus = "OK!"
+      } else {
+        proxyStatus = "FAIL!"
+      }
+    } catch (error) {
+      proxyStatus = "SERVER DOWN!"
+    }
 
-  //   try {
-  //     websiteStatus = await isItDownForMe()
-  //     if (websiteStatus.status == 1 && websiteStatus.result.status == "Site Online") {
-  //       websiteStatus = "OK!"
-  //     } else {
-  //       websiteStatus = "FAIL!"
-  //     }
-  //   } catch (error) {
-  //     websiteStatus = "WEBSITE DOWN!"
-  //   }
-  //   return res.send(`Proxy Status: ${proxyStatus}\nWebsite Status: ${websiteStatus} `)
-  // } else {
+    try {
+      websiteStatus = await isItDownForMe()
+      if (websiteStatus.status == 1 && websiteStatus.result.status == "Site Online") {
+        websiteStatus = "OK!"
+      } else {
+        websiteStatus = "FAIL!"
+      }
+    } catch (error) {
+      websiteStatus = "WEBSITE DOWN!"
+    }
+    return res.send(`Proxy Status: ${proxyStatus}\nWebsite Status: ${websiteStatus} `)
+  } else {
   return res.send("You shouldn't be here.")
-  // }
+  }
 });
 
 app.get('/ip', function (req, res) {

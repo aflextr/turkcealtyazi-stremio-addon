@@ -7,6 +7,7 @@ require("dotenv").config({path:"./dotenv.env"});
 const crypto = require("crypto");
 const https = require("https");
 
+
 // const agentConfig = {
 //     keepAlive: true,
 //     keepAliveMsecs: 2000,
@@ -16,6 +17,7 @@ const https = require("https");
 
 // axios.defaults.httpAgent = new HttpProxyAgent(agentConfig);
 // axios.defaults.httpsAgent = new HttpsProxyAgent(agentConfig);
+
 
 
 const allowLegacyRenegotiationforNodeJsOptions = {
@@ -29,7 +31,7 @@ const allowLegacyRenegotiationforNodeJsOptions = {
 
 
 async function mainPageFinder(imdbId) {
-    
+
         
         var editedId = imdbId.substring(2);
         
@@ -47,6 +49,7 @@ async function mainPageFinder(imdbId) {
 
 async function subIDfinder(subLink) {
     try {
+    
 
         const response = await axios({...allowLegacyRenegotiationforNodeJsOptions, url:subLink, method:"GET", headers:header});
 

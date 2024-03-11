@@ -178,64 +178,70 @@ app.get('/download/:idid\-:sidid\-:altid\-:episode', function (req, res) {
 
 
     axios({ ...allowLegacyRenegotiationforNodeJsOptions, url: process.env.PROXY_URL + '/ind', method: "POST", headers: header, data: `idid=${req.params.idid}&altid=${req.params.altid}&sidid=${req.params.sidid}`, responseType: 'arraybuffer', responseEncoding: 'binary' }).then((response) => {
+      if (response && response.status === 200 && response.statusText === 'OK') {
+        fs.writeFileSync(`./subs/${req.params.altid}.zip`, response.data, { encoding: 'binary' })
 
-      fs.writeFileSync(`./subs/${req.params.altid}.zip`, response.data, { encoding: 'binary' });
+        //extract zip
+        fs.createReadStream(`./subs/${req.params.altid}.zip`).pipe(unzipper.Extract({ path: `./subs/${req.params.altid}` })).on('error', (err) => console.error('Hata:', err)).on("finish", () => {
+          var files = fs.readdirSync(`./subs/${req.params.altid}`);
 
-      //extract zip
-      fs.createReadStream(`./subs/${req.params.altid}.zip`).pipe(unzipper.Extract({ path: `./subs/${req.params.altid}` })).on('error', (err) => console.error('Hata:', err)).on("finish", () => {
-        var files = fs.readdirSync(`./subs/${req.params.altid}`);
-
-        if (!String(files[0]).includes(".")) {
-          files = fs.readdirSync(`./subs/${req.params.altid}/${files[0]}`);
-        }
-        for (const value of files) {
-
-          const decodedFileName = value;
-
-          //MOVİE 
-          if (episode == 0) {
-            subFilePath = `./subs/${req.params.altid}/${decodedFileName}`;
-            break;
+          if (!String(files[0]).includes(".")) {
+            files = fs.readdirSync(`./subs/${req.params.altid}/${files[0]}`);
           }
-          //SERİES
-          else if (decodedFileName.includes("E" + episode || "e" + episode)) {
-            subFilePath = `./subs/${req.params.altid}/${decodedFileName}`;
-            break;
-          } else if (decodedFileName.includes("B" + episode || "b" + episode)) {
-            subFilePath = `./subs/${req.params.altid}/${decodedFileName}`;
-            break;
-          }
-          else if (decodedFileName.includes("_" + episode + "_")) {
-            subFilePath = `./subs/${req.params.altid}/${decodedFileName}`;
-            break;
-          }
-          else if (decodedFileName.includes("x" + episode || "X" + episode)) {
-            subFilePath = `./subs/${req.params.altid}/${decodedFileName}`;
-            break;
-          }
-          else if (decodedFileName.includes(episode)) {
-            subFilePath = `./subs/${req.params.altid}/${decodedFileName}`;
-            break;
-          }
-          else if (files.length == 1) {
-            subFilePath = `./subs/${req.params.altid}/${decodedFileName}`;
-            break;
-          }
-        }
+          for (const value of files) {
 
-        var textt = getsub(subFilePath);
+            const decodedFileName = value;
 
-        //delete zip file
-        if (fs.existsSync(`./subs/${req.params.altid}.zip`)) {
-          fs.rmSync(`./subs/${req.params.altid}.zip`);
-        }
+            //MOVİE 
+            if (episode == 0) {
+              subFilePath = `./subs/${req.params.altid}/${decodedFileName}`;
+              break;
+            }
+            //SERİES
+            else if (decodedFileName.includes("E" + episode || "e" + episode)) {
+              subFilePath = `./subs/${req.params.altid}/${decodedFileName}`;
+              break;
+            } else if (decodedFileName.includes("B" + episode || "b" + episode)) {
+              subFilePath = `./subs/${req.params.altid}/${decodedFileName}`;
+              break;
+            }
+            else if (decodedFileName.includes("_" + episode + "_")) {
+              subFilePath = `./subs/${req.params.altid}/${decodedFileName}`;
+              break;
+            }
+            else if (decodedFileName.includes("x" + episode || "X" + episode)) {
+              subFilePath = `./subs/${req.params.altid}/${decodedFileName}`;
+              break;
+            }
+            else if (decodedFileName.includes(episode)) {
+              subFilePath = `./subs/${req.params.altid}/${decodedFileName}`;
+              break;
+            }
+            else if (files.length == 1) {
+              subFilePath = `./subs/${req.params.altid}/${decodedFileName}`;
+              break;
+            }
+          }
 
-        if (textt && typeof(textt.text) !== "undefined") {
-          return res.send(textt.text)
-        }
-        
-      });
+          var textt = getsub(subFilePath);
 
+          //delete zip file
+          if (fs.existsSync(`./subs/${req.params.altid}.zip`)) {
+            fs.rmSync(`./subs/${req.params.altid}.zip`);
+          }
+
+          if (textt && typeof (textt.text) !== "undefined") {
+            return res.send(textt.text)
+          }
+
+        });
+      }
+
+
+
+    }).catch((error) => {
+      console.log(error)
+      return res.send("Couldn't get the subtitle.")
     })
 
   } catch (err) {
@@ -301,7 +307,7 @@ app.get('/cache-status/:devpass?/:query?/:key?', function (req, res) {
   //   return res.send("Error ocurred.")
   // }
 
-   return res.send("You shouldn't be here.")
+  return res.send("You shouldn't be here.")
 });
 
 app.get('/app-status/:devpass?', async function (req, res) {
@@ -332,7 +338,7 @@ app.get('/app-status/:devpass?', async function (req, res) {
   //   }
   //   return res.send(`Proxy Status: ${proxyStatus}\nWebsite Status: ${websiteStatus} `)
   // } else {
-     return res.send("You shouldn't be here.")
+  return res.send("You shouldn't be here.")
   // }
 });
 

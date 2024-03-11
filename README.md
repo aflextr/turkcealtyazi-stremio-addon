@@ -7,11 +7,11 @@ This is an unofficial Stremio Addon for Turkish Subtitles from turkcealtyazi.org
 ### Remote
 You can install it through
 ```
-https://5a0d1888fa64-turkcealtyaziorg.baby-beamup.club
+https://turkcealtyazi-stremio-mycodelab.koyeb.app
 ```
 or
 ```
-stremio://5a0d1888fa64-turkcealtyaziorg.baby-beamup.club/manifest.json
+stremio://turkcealtyazi-stremio-mycodelab.koyeb.app/manifest.json
 ```
 
 ### Local

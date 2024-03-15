@@ -12,6 +12,7 @@
   "author": "gorlev",
   "license": "MIT",
   "dependencies": {
+    "ass-to-srt": "^1.2.1",
     "axios": "^0.22.0",
     "chardet": "^2.0.0",
     "cheerio": "^1.0.0-rc.5",

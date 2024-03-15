@@ -19,6 +19,7 @@ const rateLimit = require('express-rate-limit')
 const header = require("./header");
 const path = require("path");
 const chardet = require('chardet');
+var ass2srt = require('ass-to-srt');
 const crypto = require("crypto");
 const https = require("https");
 
@@ -118,7 +119,12 @@ function getsub(subFilePath) {
   
     var foundext = path.extname(subFilePath)
 
+    
     if (foundext != ".srt") {
+      if (foundext == ".ass") {
+         var data = ass2srt(text);
+         return { text: data, ext: foundext };
+      }
 
       const outputExtension = '.srt'
       const options = {

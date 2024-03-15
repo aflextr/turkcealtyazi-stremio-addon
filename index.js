@@ -196,7 +196,7 @@ function SeriesAndMoviesCheck(altid, episode) {
   return returnValue;
 }
 
-app.get('/download/:idid\-:sidid\-:altid\-:episode', async function (req, res) {
+app.get('/download/:idid\-:sidid\-:altid\-:episode', function (req, res) {
   try {
     var subFilePath = "";
     var episode = req.params.episode;
@@ -225,11 +225,11 @@ app.get('/download/:idid\-:sidid\-:altid\-:episode', async function (req, res) {
         return res.send(textt.text)
       }
     } else {
-      await axios({ ...allowLegacyRenegotiationforNodeJsOptions, url: process.env.PROXY_URL + '/ind', method: "POST", headers: header, data: `idid=${req.params.idid}&altid=${req.params.altid}&sidid=${req.params.sidid}`, responseType: 'arraybuffer', responseEncoding: 'binary' }).then((response) => {
+      axios({ ...allowLegacyRenegotiationforNodeJsOptions, url: process.env.PROXY_URL + '/ind', method: "POST", headers: header, data: `idid=${req.params.idid}&altid=${req.params.altid}&sidid=${req.params.sidid}`, responseType: 'arraybuffer', responseEncoding: 'binary' }).then((response) => {
         if (response && response.status === 200 && response.statusText === 'OK') {
           fs.writeFileSync(`./subs/${req.params.altid}.zip`, response.data, { encoding: 'binary' })
           //extract zip
-          fs.createReadStream(`./subs/${req.params.altid}.zip`).pipe(unzipper.Extract({ path: `./subs/${req.params.altid}`})).on('error', (err) => console.error('Hata:', err)).on("finish", async () => {
+          fs.createReadStream(`./subs/${req.params.altid}.zip`).pipe(unzipper.Extract({ path: `./subs/${req.params.altid}`})).on('error', (err) => console.error('Hata:', err)).on("finish", () => {
             subFilePath = SeriesAndMoviesCheck(req.params.altid, episode);
 
             var textt = getsub(subFilePath);

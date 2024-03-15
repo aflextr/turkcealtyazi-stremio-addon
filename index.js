@@ -18,6 +18,7 @@ const isItDownForMe = require('./addonStatus');
 const rateLimit = require('express-rate-limit')
 const header = require("./header");
 const path = require("path");
+const chardet = require('chardet');
 const crypto = require("crypto");
 const https = require("https");
 
@@ -61,7 +62,7 @@ const STALE_ERROR_AGE = 7 * 24 * 60 * 60; // 7 days
 var respond = function (res, data) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Headers', '*');
-  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
   res.send(data);
 };
 
@@ -103,8 +104,18 @@ app.get('/:userConf/manifest.json', function (req, res) {
 
 function getsub(subFilePath) {
   try {
-    const buffer = fs.readFileSync(subFilePath);
-    const decodedFileContent = iconv.decode(buffer, 'ISO-8859-9')
+    var text = "";
+    const encoding = chardet.detectFileSync(subFilePath);
+
+    if (encoding != "UTF-8") {
+      var buffer = fs.readFileSync(subFilePath);
+      text = iconv.decode(buffer, 'win1254')
+      
+    }
+    else{
+      text =fs.readFileSync(subFilePath).toString("utf8")
+    }
+  
     var foundext = path.extname(subFilePath)
 
     if (foundext != ".srt") {
@@ -113,11 +124,11 @@ function getsub(subFilePath) {
       const options = {
         removeTextFormatting: true,
       };
-      const { subtitle } = subsrt.convert(decodedFileContent, outputExtension, options)
+      const { subtitle } = subsrt.convert(text, outputExtension, options)
       return { text: subtitle, ext: foundext };
 
     } else {
-      return { text: decodedFileContent, ext: foundext };
+      return { text: text, ext: foundext };
     }
   } catch (error) {
     if (error) return console.log(error);
@@ -127,26 +138,31 @@ function getsub(subFilePath) {
 
 
 function CheckFolderAndFiles() {
-  const folderPath = './subs/';
-  if (!fs.existsSync(folderPath)) {
-    fs.mkdirSync(folderPath);
+  try {
+    const folderPath = './subs/';
+    if (!fs.existsSync(folderPath)) {
+      fs.mkdirSync(folderPath);
+    }
+  
+    const files = fs.readdirSync(folderPath);
+  
+    if (files.length > 100) {
+      files.forEach((file) => {
+        const filePath = path.join(folderPath, file);
+        const fileStats = fs.statSync(filePath);
+  
+        if (fileStats.isFile()) {
+          fs.unlinkSync(filePath);
+        } else if (fileStats.isDirectory()) {
+          // Dizin içinde dosya varsa onları da silmek için
+          fs.rmdirSync(filePath, { recursive: true });
+        }
+      });
+    }
+  } catch (error) {
+    if (error) console.log(error);
   }
-
-  const files = fs.readdirSync(folderPath);
-
-  if (files.length > 100) {
-    files.forEach((file) => {
-      const filePath = path.join(folderPath, file);
-      const fileStats = fs.statSync(filePath);
-
-      if (fileStats.isFile()) {
-        fs.unlinkSync(filePath);
-      } else if (fileStats.isDirectory()) {
-        // Dizin içinde dosya varsa onları da silmek için
-        fs.rmdirSync(filePath, { recursive: true });
-      }
-    });
-  }
+ 
 }
 
 
@@ -230,11 +246,11 @@ app.get('/download/:idid\-:sidid\-:altid\-:episode', function (req, res) {
         return res.send(textt.text)
       }
     } else {
-      axios({ ...allowLegacyRenegotiationforNodeJsOptions, url: process.env.PROXY_URL + '/ind', method: "POST", headers: header, data: `idid=${req.params.idid}&altid=${req.params.altid}&sidid=${req.params.sidid}`, responseType: 'arraybuffer', responseEncoding: 'binary' }).then((response) => {
+      axios({ ...allowLegacyRenegotiationforNodeJsOptions, url: process.env.PROXY_URL + '/ind', method: "POST", headers: header, data: `idid=${req.params.idid}&altid=${req.params.altid}&sidid=${req.params.sidid}`, responseType: 'arraybuffer', responseEncoding: 'utf8' }).then((response) => {
         if (response && response.status === 200 && response.statusText === 'OK') {
-          fs.writeFileSync(`./subs/${req.params.altid}.zip`, response.data, { encoding: 'binary' })
+          fs.writeFileSync(`./subs/${req.params.altid}.zip`, response.data, { encoding: 'utf8' })
           //extract zip
-          fs.createReadStream(`./subs/${req.params.altid}.zip`).pipe(unzipper.Extract({ path: `./subs/${req.params.altid}` })).on('error', (err) => console.error('Hata:', err)).on("finish", () => {
+          fs.createReadStream(`./subs/${req.params.altid}.zip`).pipe(unzipper.Extract({ path: `./subs/${req.params.altid}` })).on('error', (err) => console.error('Hata:', err)).on("entry",(entry)=>{entry.pipe(fs.createWriteStream(entry.path, { encoding: 'utf8' }));}).on("finish", () => {
             subFilePath = SeriesAndMoviesCheck(req.params.altid, episode);
 
             var textt = getsub(subFilePath);

@@ -1,8 +1,3 @@
----
-runme:
-  id: 01HS1K9537SBFVP1Q2C9FFZ6GM
-  version: v3
----
 
 # TurkceAltyaziOrg-Stremio-Addon
 
@@ -55,6 +50,4 @@ Great thanks to:
 
 * [turkcealtyazi-stremio-addon(fork)](https://github.com/gorlev/turkcealtyaziorg-stremio-addon)
 
-```sh {"id":"01HS1KAWPQC1V6KABFMAJ12QVN"}
 
-```

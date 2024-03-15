@@ -1,40 +1,60 @@
-# TurkceAltyaziOrg-Stremio-Addon
-This is an unofficial Stremio Addon for Turkish Subtitles from turkcealtyazi.org.
+---
+runme:
+  id: 01HS1K9537SBFVP1Q2C9FFZ6GM
+  version: v3
+---
 
+# TurkceAltyaziOrg-Stremio-Addon
+
+This is an unofficial Stremio Addon for Turkish Subtitles from turkcealtyazi.org.
 
 ## Installation
 
 ### Remote
+
 You can install it through
-```
+
+```sh {"id":"01HS1K9537SBFVP1Q2C1HM75A7"}
 https://turkcealtyazi-stremio-mycodelab.koyeb.app
 ```
+
 or
-```
+
+```sh {"id":"01HS1K9537SBFVP1Q2C2XX2N4Q"}
 stremio://turkcealtyazi-stremio-mycodelab.koyeb.app/manifest.json
 ```
 
 ### Local
+
 Download and install [Node.js](https://nodejs.org/en/download/) on your computer, then install and launch the addon from Powershell, CMD, or any kind of Terminal:
 
-```
-git clone https://github.com/gorlev/turkcealtyaziorg-stremio-addon.git
+```sh {"id":"01HS1K9537SBFVP1Q2C4V6HGFQ"}
+git clone https://github.com/aflextr/turkcealtyazi-stremio-addon.git
 cd turkcealtyaziorg-stremio-addon
 npm install
 npm start
 ```
 
 Add the addon to stremio from browser:
-```
-stremio://127.0.0.1:3648/manifest.json
+
+```sh {"id":"01HS1K9537SBFVP1Q2C5VFA82C"}
+stremio://127.0.0.1:7000/manifest.json
 ```
 
 or from the addon search menu:
-```
-http://127.0.0.1:3648/manifest.json
+
+```sh {"id":"01HS1K9537SBFVP1Q2C8JTQG7Q"}
+http://127.0.0.1:7000/manifest.json
 ```
 
 ## Contributions
 
 Great thanks to:
+
 * [wizdom-stremio-v2](https://github.com/maormagori/wizdom-stremio-v2)
+
+* [turkcealtyazi-stremio-addon(fork)](https://github.com/gorlev/turkcealtyaziorg-stremio-addon)
+
+```sh {"id":"01HS1KAWPQC1V6KABFMAJ12QVN"}
+
+```

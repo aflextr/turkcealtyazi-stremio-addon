@@ -105,27 +105,19 @@ function getsub(subFilePath) {
   try {
     const buffer = fs.readFileSync(subFilePath);
     const decodedFileContent = iconv.decode(buffer, 'ISO-8859-9')
-    fs.writeFileSync(subFilePath, decodedFileContent, { encoding: 'utf8' });
-
-
     var foundext = path.extname(subFilePath)
-    var readFile = fs.readFileSync(subFilePath, { encoding: "utf8" });
+
     if (foundext != ".srt") {
-      if (readFile != '') {
-        const decodedFileContent = iconv.decode(readFile, 'UTF8');
 
+      const outputExtension = '.srt'
+      const options = {
+        removeTextFormatting: true,
+      };
+      const { subtitle } = subsrt.convert(decodedFileContent, outputExtension, options)
+      return { text: subtitle, ext: foundext };
 
-        const outputExtension = '.srt'
-        const options = {
-          removeTextFormatting: true,
-        };
-        const { subtitle } = subsrt.convert(readFile, outputExtension, options)
-        return { text: subtitle, ext: foundext };
-
-      }
     } else {
-      // const decodedFileContent = iconv.decode(readFile, 'UTF8');
-      return { text: readFile, ext: foundext };
+      return { text: decodedFileContent, ext: foundext };
     }
   } catch (error) {
     if (error) return console.log(error);
@@ -158,7 +150,53 @@ function CheckFolderAndFiles() {
 }
 
 
-app.get('/download/:idid\-:sidid\-:altid\-:episode', function (req, res) {
+function SeriesAndMoviesCheck(altid, episode) {
+  var returnValue = "";
+  var files = fs.readdirSync(`./subs/${altid}`);
+
+  if (!String(files[0]).includes(".")) {
+    files = fs.readdirSync(`./subs/${altid}/${files[0]}`);
+  }
+  for (const value of files) {
+
+    //MOVİE 
+    if (episode == 0) {
+      returnValue = `./subs/${altid}/${value}`;
+      break;
+    }
+    //SERİES
+    else if (value.includes("E" + episode || "e" + episode)) {
+      returnValue = `./subs/${altid}/${value}`;
+      break;
+
+    } else if (value.includes("B" + episode || "b" + episode)) {
+      returnValue = `./subs/${altid}/${value}`;
+      break;
+    }
+    else if (value.includes("_" + episode + "_")) {
+      returnValue = `./subs/${altid}/${value}`;
+      break;
+
+    }
+    else if (value.includes("x" + episode || "X" + episode)) {
+      returnValue = `./subs/${altid}/${value}`;
+      break;
+
+    }
+    else if (value.includes(episode)) {
+      returnValue = `./subs/${altid}/${value}`;
+      break;
+    }
+    else if (files.length == 1) {
+      returnValue = `./subs/${altid}/${value}`;
+      break;
+    }
+  }
+
+  return returnValue;
+}
+
+app.get('/download/:idid\-:sidid\-:altid\-:episode', async function (req, res) {
   try {
     var subFilePath = "";
     var episode = req.params.episode;
@@ -172,77 +210,48 @@ app.get('/download/:idid\-:sidid\-:altid\-:episode', function (req, res) {
 
 
     CheckFolderAndFiles();
-
-
     res.set('Cache-Control', `public, max-age=${CACHE_MAX_AGE}, stale-while-revalidate:${STALE_REVALIDATE_AGE}, stale-if-error:${STALE_ERROR_AGE}`);
+    if (fs.existsSync(path.join(__dirname, "subs", req.params.altid))) {
+      subFilePath = SeriesAndMoviesCheck(req.params.altid, episode);
 
+      var textt = getsub(subFilePath);
 
-    axios({ ...allowLegacyRenegotiationforNodeJsOptions, url: process.env.PROXY_URL + '/ind', method: "POST", headers: header, data: `idid=${req.params.idid}&altid=${req.params.altid}&sidid=${req.params.sidid}`, responseType: 'arraybuffer', responseEncoding: 'binary' }).then((response) => {
-      if (response && response.status === 200 && response.statusText === 'OK') {
-        fs.writeFileSync(`./subs/${req.params.altid}.zip`, response.data, { encoding: 'binary' })
-
-        //extract zip
-        fs.createReadStream(`./subs/${req.params.altid}.zip`).pipe(unzipper.Extract({ path: `./subs/${req.params.altid}` })).on('error', (err) => console.error('Hata:', err)).on("finish", () => {
-          var files = fs.readdirSync(`./subs/${req.params.altid}`);
-
-          if (!String(files[0]).includes(".")) {
-            files = fs.readdirSync(`./subs/${req.params.altid}/${files[0]}`);
-          }
-          for (const value of files) {
-
-            const decodedFileName = value;
-
-            //MOVİE 
-            if (episode == 0) {
-              subFilePath = `./subs/${req.params.altid}/${decodedFileName}`;
-              break;
-            }
-            //SERİES
-            else if (decodedFileName.includes("E" + episode || "e" + episode)) {
-              subFilePath = `./subs/${req.params.altid}/${decodedFileName}`;
-              break;
-            } else if (decodedFileName.includes("B" + episode || "b" + episode)) {
-              subFilePath = `./subs/${req.params.altid}/${decodedFileName}`;
-              break;
-            }
-            else if (decodedFileName.includes("_" + episode + "_")) {
-              subFilePath = `./subs/${req.params.altid}/${decodedFileName}`;
-              break;
-            }
-            else if (decodedFileName.includes("x" + episode || "X" + episode)) {
-              subFilePath = `./subs/${req.params.altid}/${decodedFileName}`;
-              break;
-            }
-            else if (decodedFileName.includes(episode)) {
-              subFilePath = `./subs/${req.params.altid}/${decodedFileName}`;
-              break;
-            }
-            else if (files.length == 1) {
-              subFilePath = `./subs/${req.params.altid}/${decodedFileName}`;
-              break;
-            }
-          }
-
-          var textt = getsub(subFilePath);
-
-          //delete zip file
-          if (fs.existsSync(`./subs/${req.params.altid}.zip`)) {
-            fs.rmSync(`./subs/${req.params.altid}.zip`);
-          }
-
-          if (textt && typeof (textt.text) !== "undefined") {
-            return res.send(textt.text)
-          }
-
-        });
+      //delete zip file
+      if (fs.existsSync(`./subs/${req.params.altid}.zip`)) {
+        fs.rmSync(`./subs/${req.params.altid}.zip`);
       }
 
+      if (textt && typeof (textt.text) !== "undefined") {
+        return res.send(textt.text)
+      }
+    } else {
+      await axios({ ...allowLegacyRenegotiationforNodeJsOptions, url: process.env.PROXY_URL + '/ind', method: "POST", headers: header, data: `idid=${req.params.idid}&altid=${req.params.altid}&sidid=${req.params.sidid}`, responseType: 'arraybuffer', responseEncoding: 'binary' }).then((response) => {
+        if (response && response.status === 200 && response.statusText === 'OK') {
+          fs.writeFileSync(`./subs/${req.params.altid}.zip`, response.data, { encoding: 'binary' })
+          //extract zip
+          fs.createReadStream(`./subs/${req.params.altid}.zip`).pipe(unzipper.Extract({ path: `./subs/${req.params.altid}`})).on('error', (err) => console.error('Hata:', err)).on("finish", async () => {
+            subFilePath = SeriesAndMoviesCheck(req.params.altid, episode);
+
+            var textt = getsub(subFilePath);
+
+            //delete zip file
+            if (fs.existsSync(`./subs/${req.params.altid}.zip`)) {
+              fs.rmSync(`./subs/${req.params.altid}.zip`);
+            }
+
+            if (textt && typeof (textt.text) !== "undefined") {
+              return res.send(textt.text)
+            }
+          });
+        }
+      }).catch((error) => {
+        console.log(error)
+        return res.send("Couldn't get the subtitle.")
+      })
+    }
 
 
-    }).catch((error) => {
-      console.log(error)
-      return res.send("Couldn't get the subtitle.")
-    })
+
 
   } catch (err) {
     console.log(err)

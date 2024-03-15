@@ -151,49 +151,54 @@ function CheckFolderAndFiles() {
 
 
 function SeriesAndMoviesCheck(altid, episode) {
-  var returnValue = "";
-  var files = fs.readdirSync(`./subs/${altid}`);
+  try {
+    var returnValue = "";
+    var files = fs.readdirSync(`./subs/${altid}`);
 
-  if (!String(files[0]).includes(".")) {
-    files = fs.readdirSync(`./subs/${altid}/${files[0]}`);
+    if (!String(files[0]).includes(".")) {
+      files = fs.readdirSync(`./subs/${altid}/${files[0]}`);
+    }
+    for (const value of files) {
+
+      //MOVİE 
+      if (episode == 0) {
+        returnValue = `./subs/${altid}/${value}`;
+        break;
+      }
+      //SERİES
+      else if (value.includes("E" + episode || "e" + episode)) {
+        returnValue = `./subs/${altid}/${value}`;
+        break;
+
+      } else if (value.includes("B" + episode || "b" + episode)) {
+        returnValue = `./subs/${altid}/${value}`;
+        break;
+      }
+      else if (value.includes("_" + episode + "_")) {
+        returnValue = `./subs/${altid}/${value}`;
+        break;
+
+      }
+      else if (value.includes("x" + episode || "X" + episode)) {
+        returnValue = `./subs/${altid}/${value}`;
+        break;
+
+      }
+      else if (value.includes(episode)) {
+        returnValue = `./subs/${altid}/${value}`;
+        break;
+      }
+      else if (files.length == 1) {
+        returnValue = `./subs/${altid}/${value}`;
+        break;
+      }
+    }
+
+    return returnValue;
+  } catch (error) {
+    if (error) console.log(error);
   }
-  for (const value of files) {
 
-    //MOVİE 
-    if (episode == 0) {
-      returnValue = `./subs/${altid}/${value}`;
-      break;
-    }
-    //SERİES
-    else if (value.includes("E" + episode || "e" + episode)) {
-      returnValue = `./subs/${altid}/${value}`;
-      break;
-
-    } else if (value.includes("B" + episode || "b" + episode)) {
-      returnValue = `./subs/${altid}/${value}`;
-      break;
-    }
-    else if (value.includes("_" + episode + "_")) {
-      returnValue = `./subs/${altid}/${value}`;
-      break;
-
-    }
-    else if (value.includes("x" + episode || "X" + episode)) {
-      returnValue = `./subs/${altid}/${value}`;
-      break;
-
-    }
-    else if (value.includes(episode)) {
-      returnValue = `./subs/${altid}/${value}`;
-      break;
-    }
-    else if (files.length == 1) {
-      returnValue = `./subs/${altid}/${value}`;
-      break;
-    }
-  }
-
-  return returnValue;
 }
 
 app.get('/download/:idid\-:sidid\-:altid\-:episode', function (req, res) {
@@ -229,7 +234,7 @@ app.get('/download/:idid\-:sidid\-:altid\-:episode', function (req, res) {
         if (response && response.status === 200 && response.statusText === 'OK') {
           fs.writeFileSync(`./subs/${req.params.altid}.zip`, response.data, { encoding: 'binary' })
           //extract zip
-          fs.createReadStream(`./subs/${req.params.altid}.zip`).pipe(unzipper.Extract({ path: `./subs/${req.params.altid}`})).on('error', (err) => console.error('Hata:', err)).on("finish", () => {
+          fs.createReadStream(`./subs/${req.params.altid}.zip`).pipe(unzipper.Extract({ path: `./subs/${req.params.altid}` })).on('error', (err) => console.error('Hata:', err)).on("finish", () => {
             subFilePath = SeriesAndMoviesCheck(req.params.altid, episode);
 
             var textt = getsub(subFilePath);

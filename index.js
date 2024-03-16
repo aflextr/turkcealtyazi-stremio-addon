@@ -22,6 +22,7 @@ const chardet = require('chardet');
 var ass2srt = require('ass-to-srt');
 const crypto = require("crypto");
 const https = require("https");
+const { default: _default } = require("chardet");
 
 
 
@@ -105,6 +106,7 @@ app.get('/:userConf/manifest.json', function (req, res) {
 
 function getsub(subFilePath) {
   try {
+    
     var text = "";
     const encoding = chardet.detectFileSync(subFilePath);
 
@@ -152,7 +154,7 @@ function CheckFolderAndFiles() {
   
     const files = fs.readdirSync(folderPath);
   
-    if (files.length > 100) {
+    if (files.length > 500) {
       files.forEach((file) => {
         const filePath = path.join(folderPath, file);
         const fileStats = fs.statSync(filePath);
@@ -175,43 +177,46 @@ function CheckFolderAndFiles() {
 function SeriesAndMoviesCheck(altid, episode) {
   try {
     var returnValue = "";
-    var files = fs.readdirSync(`./subs/${altid}`);
-
-    if (!String(files[0]).includes(".")) {
-      files = fs.readdirSync(`./subs/${altid}/${files[0]}`);
+    var files = fs.readdirSync(path.join(__dirname,"subs",altid));
+    var filess = files;
+    const stats = fs.lstatSync(path.join(__dirname,"subs",altid,files[0]));
+    if (stats.isDirectory()) {
+      files = fs.readdirSync(path.join(__dirname,"subs",altid,files[0]));
+      altid = path.join(altid,filess[0]);
+      
     }
     for (const value of files) {
 
       //MOVİE 
       if (episode == 0) {
-        returnValue = `./subs/${altid}/${value}`;
+        returnValue = path.join(__dirname,"subs",altid,value);
         break;
       }
       //SERİES
       else if (value.includes("E" + episode || "e" + episode)) {
-        returnValue = `./subs/${altid}/${value}`;
+        returnValue = path.join(__dirname,"subs",altid,value);
         break;
 
       } else if (value.includes("B" + episode || "b" + episode)) {
-        returnValue = `./subs/${altid}/${value}`;
+        returnValue = path.join(__dirname,"subs",altid,value);
         break;
       }
       else if (value.includes("_" + episode + "_")) {
-        returnValue = `./subs/${altid}/${value}`;
+        returnValue = path.join(__dirname,"subs",altid,value);
         break;
 
       }
       else if (value.includes("x" + episode || "X" + episode)) {
-        returnValue = `./subs/${altid}/${value}`;
+        returnValue = path.join(__dirname,"subs",altid,value);
         break;
 
       }
       else if (value.includes(episode)) {
-        returnValue = `./subs/${altid}/${value}`;
+        returnValue = path.join(__dirname,"subs",altid,value);
         break;
       }
       else if (files.length == 1) {
-        returnValue = `./subs/${altid}/${value}`;
+        returnValue = path.join(__dirname,"subs",altid,value);
         break;
       }
     }
@@ -244,8 +249,9 @@ app.get('/download/:idid\-:sidid\-:altid\-:episode', function (req, res) {
       var textt = getsub(subFilePath);
 
       //delete zip file
-      if (fs.existsSync(`./subs/${req.params.altid}.zip`)) {
-        fs.rmSync(`./subs/${req.params.altid}.zip`);
+      
+      if (fs.existsSync(path.join(__dirname,"subs",req.params.altid+".zip"))) {
+        fs.rmSync(path.join(__dirname,"subs",req.params.altid+".zip"));
       }
 
       if (textt && typeof (textt.text) !== "undefined") {
@@ -254,16 +260,16 @@ app.get('/download/:idid\-:sidid\-:altid\-:episode', function (req, res) {
     } else {
       axios({ ...allowLegacyRenegotiationforNodeJsOptions, url: process.env.PROXY_URL + '/ind', method: "POST", headers: header, data: `idid=${req.params.idid}&altid=${req.params.altid}&sidid=${req.params.sidid}`, responseType: 'arraybuffer', responseEncoding: 'utf8' }).then((response) => {
         if (response && response.status === 200 && response.statusText === 'OK') {
-          fs.writeFileSync(`./subs/${req.params.altid}.zip`, response.data, { encoding: 'utf8' })
+          fs.writeFileSync(path.join(__dirname,"subs",req.params.altid+".zip"), response.data, { encoding: 'utf8' })
           //extract zip
-          fs.createReadStream(`./subs/${req.params.altid}.zip`).pipe(unzipper.Extract({ path: `./subs/${req.params.altid}` })).on('error', (err) => console.error('Hata:', err)).on("entry",(entry)=>{entry.pipe(fs.createWriteStream(entry.path, { encoding: 'utf8' }));}).on("finish", () => {
+          fs.createReadStream(path.join(__dirname,"subs",req.params.altid+".zip")).pipe(unzipper.Extract({ path: path.join(__dirname,"subs",req.params.altid) })).on('error', (err) => console.error('Hata:', err)).on("entry",(entry)=>{entry.pipe(fs.createWriteStream(entry.path, { encoding: 'utf8' }));}).on("finish", () => {
             subFilePath = SeriesAndMoviesCheck(req.params.altid, episode);
 
             var textt = getsub(subFilePath);
 
             //delete zip file
-            if (fs.existsSync(`./subs/${req.params.altid}.zip`)) {
-              fs.rmSync(`./subs/${req.params.altid}.zip`);
+            if (fs.existsSync(path.join(__dirname,"subs",req.params.altid+".zip"))) {
+              fs.rmSync(path.join(__dirname,"subs",req.params.altid+".zip"));
             }
 
             if (textt && typeof (textt.text) !== "undefined") {

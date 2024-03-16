@@ -22,7 +22,6 @@ const chardet = require('chardet');
 var ass2srt = require('ass-to-srt');
 const crypto = require("crypto");
 const https = require("https");
-const { default: _default } = require("chardet");
 
 
 
@@ -109,7 +108,7 @@ function getsub(subFilePath) {
     
     var text = "";
     const encoding = chardet.detectFileSync(subFilePath);
-
+    
     if (encoding != "UTF-8") {
       var buffer = fs.readFileSync(subFilePath);
       text = iconv.decode(buffer, 'win1254')
